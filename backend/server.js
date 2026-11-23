@@ -10,10 +10,9 @@ const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const BASE_URL =
-  "https://sky-admin-bot-web-production.up.railway.app";
-
+const BASE_URL = "https://sky-admin-bot-web-production.up.railway.app";
 const REDIRECT_URI = `${BASE_URL}/auth/discord/callback`;
+const PANEL_PATH = path.resolve(__dirname, "../panel.html");
 
 app.set("trust proxy", 1);
 app.use(express.json());
@@ -36,7 +35,11 @@ app.get("/", (req, res) => {
 });
 
 app.get("/panel.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "panel.html"));
+  res.sendFile(PANEL_PATH, (error) => {
+    if (error && !res.headersSent) {
+      res.status(404).send("관리 패널 파일을 찾을 수 없습니다.");
+    }
+  });
 });
 
 app.get("/health", (req, res) => {
@@ -60,9 +63,7 @@ app.get("/auth/discord", (req, res) => {
       state
     });
 
-    res.redirect(
-      `https://discord.com/oauth2/authorize?${params}`
-    );
+    res.redirect(`https://discord.com/oauth2/authorize?${params}`);
   });
 });
 
@@ -118,7 +119,7 @@ app.get("/auth/discord/callback", async (req, res) => {
 
     req.session.save((error) => {
       if (error) {
-        return res.status(500).send("로그인 세션 저장 실패");
+        return res.status(500).send("세션 저장 실패");
       }
 
       res.redirect("/panel.html");
