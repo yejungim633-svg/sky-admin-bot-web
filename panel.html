@@ -7,224 +7,161 @@
 <title>Sky Admin Bot | 관리 패널</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#0b1120;color:#f1f5f9;font-family:Arial,sans-serif}
-.sidebar{position:fixed;left:0;top:0;bottom:0;width:245px;background:#111c2e;border-right:1px solid #263449;padding:25px 16px}
-.logo{font-size:21px;font-weight:bold;margin:5px 10px 35px}
-.logo span{color:#60a5fa}
-.menu{display:block;width:100%;text-align:left;background:transparent;border:0;color:#aab8cc;padding:14px;border-radius:9px;margin:5px 0;cursor:pointer;font-size:14px}
-.menu:hover,.menu.active{background:#233652;color:white}
-.main{margin-left:245px;padding:35px;max-width:1300px}
-.top{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}
-h1{font-size:29px;margin:0 0 10px}
-p{color:#94a3b8;line-height:1.7}
-.server{background:#17243a;border:1px solid #293c58;color:white;padding:12px;border-radius:9px;max-width:100%}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin-top:28px}
-.card{background:#142238;border:1px solid #293c58;padding:22px;border-radius:13px}
-.card h3{margin:0 0 13px;font-size:16px}
-.number{font-size:27px;font-weight:bold}
-.small{font-size:12px;color:#94a3b8}
-.section{display:none;margin-top:30px}
-.section.active{display:block}
-button.action{background:#2563eb;color:white;border:0;border-radius:8px;padding:10px 16px;cursor:pointer}
-button.action:hover{background:#1d4ed8}
-input,select{background:#0b1729;color:white;border:1px solid #34465e;border-radius:7px;padding:11px}
-.setting{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:17px 0;border-bottom:1px solid #293c58}
-.status{color:#fbbf24;font-size:12px}
-.status.ok{color:#4ade80}
-footer{margin-top:55px;color:#64748b;font-size:12px}
-@media(max-width:700px){
-.sidebar{position:relative;width:100%;height:auto}
-.main{margin:0;padding:20px}
-.menu{display:inline-block;width:auto}
+body{
+  margin:0;
+  background:#0b1120;
+  color:#f1f5f9;
+  font-family:Arial,sans-serif;
 }
+header{
+  height:75px;
+  padding:0 30px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:#111c30;
+  border-bottom:1px solid #26344b;
+}
+.logo{font-size:21px;font-weight:bold}
+main{max-width:1000px;margin:45px auto;padding:20px}
+.card{
+  background:#142137;
+  border:1px solid #293b55;
+  border-radius:13px;
+  padding:25px;
+  margin-bottom:20px;
+}
+h2{margin-top:0}
+p{color:#a8b6ca}
+button,select{
+  padding:13px 17px;
+  border:0;
+  border-radius:8px;
+  font-size:14px;
+}
+button{
+  background:#5865f2;
+  color:white;
+  cursor:pointer;
+}
+button:hover{background:#4752c4}
+select{
+  width:100%;
+  margin-top:12px;
+  background:#0b1120;
+  color:white;
+  border:1px solid #40516b;
+}
+.hidden{display:none}
+#status{margin-top:15px;color:#a5b4fc}
+#serverInfo{margin-top:15px}
 </style>
 </head>
 <body>
 
-<aside class="sidebar">
-<div class="logo">SKY <span>ADMIN BOT</span></div>
-<button class="menu active" onclick="showPage('home',this)">⌂ 대시보드</button>
-<button class="menu" onclick="showPage('auth',this)">✓ 인증 관리</button>
-<button class="menu" onclick="showPage('roles',this)">♙ 역할 관리</button>
-<button class="menu" onclick="showPage('security',this)">⚙ 보안 관리</button>
-<button class="menu" onclick="showPage('logs',this)">▤ 로그 관리</button>
-<button class="menu" onclick="showPage('settings',this)">⚙ 서버 설정</button>
-</aside>
+<header>
+  <div class="logo">Sky Admin Bot</div>
+  <button id="logoutBtn" class="hidden">로그아웃</button>
+</header>
 
-<main class="main">
-<div class="top">
-<div>
-<h1 id="pageTitle">서버 대시보드</h1>
-<p>Sky Admin Bot 일반 관리 패널</p>
-</div>
-<select class="server" id="serverSelect">
-<option value="">서버 목록 불러오는 중...</option>
-</select>
-</div>
+<main>
 
-<section id="home" class="section active">
-<div class="grid">
-<div class="card">
-<h3>Discord 연결 상태</h3>
-<div class="number" id="connectionStatus">확인 중</div>
-<p class="small" id="connectionInfo">로그인 정보를 확인하고 있습니다.</p>
-</div>
-<div class="card">
-<h3>내 Discord 서버</h3>
-<div class="number" id="serverCount">-</div>
-<p class="small">불러온 서버 수</p>
-</div>
-<div class="card">
-<h3>선택한 서버</h3>
-<div class="number" id="selectedServer">없음</div>
-<p class="small">현재 선택된 서버</p>
-</div>
-</div>
-<div class="card" style="margin-top:20px">
-<h3>관리 패널 안내</h3>
-<p>이곳에서 서버 인증, 자동 역할, 보안 및 로그 기능을 관리할 수 있도록 구성할 예정입니다.</p>
-<p class="status" id="panelStatus">Discord 연결 상태를 확인하고 있습니다.</p>
-</div>
-</section>
+  <section class="card" id="loginBox">
+    <h2>관리 패널 로그인</h2>
+    <p>Discord 계정으로 로그인하세요.</p>
+    <button id="loginBtn">Discord 로그인</button>
+    <div id="loginStatus">로그인이 필요합니다.</div>
+  </section>
 
-<section id="auth" class="section">
-<div class="card">
-<h3>인증 시스템</h3>
-<div class="setting"><div>Discord 인증 시스템<br><span class="small">Discord 계정 인증 기능</span></div><span class="status ok">연결됨</span></div>
-<div class="setting"><div>Roblox 계정 연동<br><span class="small">Roblox 계정 소유권 확인</span></div><span class="status">미연동</span></div>
-<div class="setting"><div>인증 완료 역할<br><span class="small">인증 완료 시 지급할 역할</span></div><input placeholder="역할 ID 입력"></div>
-<button class="action" onclick="alert('역할 설정 저장 기능은 다음 개발 단계에서 연결합니다.')">설정 저장</button>
-</div>
-</section>
+  <section class="card hidden" id="dashboard">
+    <h2>관리자 대시보드</h2>
+    <p id="userInfo"></p>
+    <p id="serverCount"></p>
 
-<section id="roles" class="section">
-<div class="card">
-<h3>자동 역할 설정</h3>
-<div class="setting"><div>신규 가입자 역할</div><input placeholder="역할 ID 입력"></div>
-<div class="setting"><div>인증 완료 역할</div><input placeholder="역할 ID 입력"></div>
-<div class="setting"><div>미인증 역할</div><input placeholder="역할 ID 입력"></div>
-<button class="action" onclick="alert('실제 역할 지급은 봇 연동 후 가능합니다.')">역할 설정 저장</button>
-</div>
-</section>
+    <h3>서버 선택</h3>
+    <select id="serverSelect">
+      <option value="">서버 불러오는 중...</option>
+    </select>
 
-<section id="security" class="section">
-<div class="card">
-<h3>서버 보안 설정</h3>
-<div class="setting"><div>도배 감지<br><span class="small">반복 메시지 감지 기능</span></div><input type="checkbox"></div>
-<div class="setting"><div>보안 로그<br><span class="small">주요 서버 활동 기록</span></div><input type="checkbox"></div>
-<div class="setting"><div>관리자 권한 확인<br><span class="small">관리 기능 접근 권한 검사</span></div><input type="checkbox" checked></div>
-<p class="status">실제 보안 기능은 봇 백엔드 연결 후 작동합니다.</p>
-</div>
-</section>
+    <div id="serverInfo"></div>
+    <p id="status"></p>
+  </section>
 
-<section id="logs" class="section">
-<div class="card">
-<h3>서버 활동 로그</h3>
-<p>아직 연결된 로그가 없습니다.</p>
-<p class="small">봇을 연결하면 서버 활동 기록을 표시합니다.</p>
-</div>
-</section>
-
-<section id="settings" class="section">
-<div class="card">
-<h3>서버 설정</h3>
-<div class="setting"><div>선택한 서버</div><span id="settingsServer" class="status">서버 선택 필요</span></div>
-<div class="setting"><div>관리 권한</div><span class="status">권한 확인 필요</span></div>
-<div class="setting"><div>봇 연결 상태</div><span class="status">확인 필요</span></div>
-</div>
-</section>
-
-<footer>SKY ADMIN BOT · General Administration Panel</footer>
 </main>
 
 <script>
-const API_BASE = "https://sky-admin-bot-web-production.up.railway.app";
+const loginBox = document.getElementById("loginBox");
+const dashboard = document.getElementById("dashboard");
+const loginStatus = document.getElementById("loginStatus");
+const status = document.getElementById("status");
+const serverSelect = document.getElementById("serverSelect");
 
-function showPage(id,button){
-document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));
-document.querySelectorAll('.menu').forEach(x=>x.classList.remove('active'));
-document.getElementById(id).classList.add('active');
-button.classList.add('active');
-
-const names={
-home:'서버 대시보드',
-auth:'인증 관리',
-roles:'역할 관리',
-security:'보안 관리',
-logs:'로그 관리',
-settings:'서버 설정'
+document.getElementById("loginBtn").onclick = () => {
+  location.href = "/auth/discord";
 };
-document.getElementById('pageTitle').textContent=names[id];
+
+document.getElementById("logoutBtn").onclick = async () => {
+  await fetch("/auth/logout", { method: "POST" });
+  location.href = "/";
+};
+
+serverSelect.onchange = () => {
+  const selected = serverSelect.options[serverSelect.selectedIndex];
+  document.getElementById("serverInfo").textContent =
+    serverSelect.value ? "선택한 서버: " + selected.text : "";
+};
+
+async function loadPanel() {
+  try {
+    const response = await fetch("/api/me");
+
+    if (response.status === 401) {
+      loginBox.classList.remove("hidden");
+      dashboard.classList.add("hidden");
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error("서버 응답 오류: " + response.status);
+    }
+
+    const data = await response.json();
+
+    loginBox.classList.add("hidden");
+    dashboard.classList.remove("hidden");
+    document.getElementById("logoutBtn").classList.remove("hidden");
+
+    document.getElementById("userInfo").textContent =
+      "로그인 계정: " +
+      (data.user.global_name || data.user.username);
+
+    const guilds = data.guilds || [];
+
+    document.getElementById("serverCount").textContent =
+      "참여 중인 서버: " + guilds.length + "개";
+
+    serverSelect.innerHTML = "";
+
+    if (guilds.length === 0) {
+      serverSelect.add(new Option("참여 중인 서버가 없습니다.", ""));
+    } else {
+      serverSelect.add(new Option("서버를 선택하세요.", ""));
+
+      guilds.forEach(guild => {
+        serverSelect.add(new Option(guild.name, guild.id));
+      });
+    }
+
+    status.textContent = "Discord 연결 성공";
+
+  } catch (error) {
+    loginStatus.textContent = "불러오기 실패: " + error.message;
+    status.textContent = "불러오기 실패: " + error.message;
+  }
 }
 
-const serverSelect=document.getElementById('serverSelect');
-
-serverSelect.addEventListener('change',()=>{
-const selected=serverSelect.options[serverSelect.selectedIndex];
-const name=selected ? selected.textContent : '없음';
-document.getElementById('selectedServer').textContent=name;
-document.getElementById('settingsServer').textContent=name;
-});
-
-async function loadDiscordData(){
-const status=document.getElementById('connectionStatus');
-const info=document.getElementById('connectionInfo');
-const count=document.getElementById('serverCount');
-const panelStatus=document.getElementById('panelStatus');
-
-try{
-const response=await fetch(`${API_BASE}/api/me`,{
-method:'GET',
-credentials:'include'
-});
-
-if(response.status===401){
-throw new Error('로그인이 필요합니다. Discord 로그인을 다시 진행해 주세요.');
-}
-
-if(!response.ok){
-throw new Error('서버 정보를 불러오지 못했습니다.');
-}
-
-const data=await response.json();
-
-if(!data.user || !Array.isArray(data.guilds)){
-throw new Error('Discord 응답 형식이 올바르지 않습니다.');
-}
-
-status.textContent='연결됨';
-status.classList.add('ok');
-info.textContent=`Discord 계정: ${data.user.global_name || data.user.username}`;
-count.textContent=data.guilds.length;
-panelStatus.textContent='Discord 계정 및 서버 목록 연결 성공';
-panelStatus.classList.add('ok');
-
-serverSelect.innerHTML='';
-
-if(data.guilds.length===0){
-serverSelect.add(new Option('참여 중인 서버 없음',''));
-return;
-}
-
-data.guilds.forEach(guild=>{
-const option=new Option(guild.name,guild.id);
-serverSelect.add(option);
-});
-
-serverSelect.dispatchEvent(new Event('change'));
-
-}catch(error){
-status.textContent='연결 실패';
-status.classList.remove('ok');
-info.textContent=error.message;
-count.textContent='-';
-panelStatus.textContent=error.message;
-serverSelect.innerHTML='';
-serverSelect.add(new Option('서버 목록을 불러오지 못했습니다.',''));
-}
-}
-
-loadDiscordData();
+loadPanel();
 </script>
+
 </body>
 </html>
