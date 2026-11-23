@@ -1,0 +1,111 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sky Admin Bot | 관리 패널</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0b1120;color:#f1f5f9;font-family:Arial,sans-serif}
+header{height:75px;padding:0 25px;background:#111c30;border-bottom:1px solid #26344b;display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:21px;font-weight:bold}
+main{max-width:1000px;margin:40px auto;padding:20px}
+.card{background:#142137;border:1px solid #293b55;border-radius:13px;padding:25px;margin-bottom:20px}
+button,select{padding:13px 17px;border-radius:8px;font-size:14px}
+button{border:0;background:#5865f2;color:white;cursor:pointer}
+select{width:100%;background:#0b1120;color:white;border:1px solid #40516b;margin-top:12px}
+p{color:#a8b6ca}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Sky Admin Bot</div>
+  <button id="logout" class="hidden">로그아웃</button>
+</header>
+
+<main>
+  <section class="card" id="loginBox">
+    <h2>관리 패널 로그인</h2>
+    <p>Discord 계정으로 로그인하세요.</p>
+    <button onclick="location.href='/auth/discord'">Discord 로그인</button>
+    <p id="loginStatus">로그인이 필요합니다.</p>
+  </section>
+
+  <section class="card hidden" id="dashboard">
+    <h2>관리자 대시보드</h2>
+    <p id="userInfo"></p>
+    <p id="serverCount"></p>
+    <h3>Discord 서버 선택</h3>
+    <select id="servers">
+      <option value="">서버 불러오는 중...</option>
+    </select>
+    <p id="serverInfo"></p>
+    <p id="status"></p>
+  </section>
+</main>
+
+<script>
+const loginBox = document.getElementById("loginBox");
+const dashboard = document.getElementById("dashboard");
+const servers = document.getElementById("servers");
+
+async function loadPanel(){
+  try{
+    const response = await fetch("/api/me");
+
+    if(response.status === 401){
+      loginBox.classList.remove("hidden");
+      dashboard.classList.add("hidden");
+      return;
+    }
+
+    if(!response.ok) throw new Error("서버 응답 오류");
+
+    const data = await response.json();
+
+    loginBox.classList.add("hidden");
+    dashboard.classList.remove("hidden");
+    document.getElementById("logout").classList.remove("hidden");
+
+    document.getElementById("userInfo").textContent =
+      "로그인 계정: " + (data.user.global_name || data.user.username);
+
+    const guilds = data.guilds || [];
+
+    document.getElementById("serverCount").textContent =
+      "참여 중인 서버: " + guilds.length + "개";
+
+    servers.innerHTML = "";
+    servers.add(new Option("관리할 서버를 선택하세요.", ""));
+
+    guilds.forEach(guild => {
+      servers.add(new Option(guild.name, guild.id));
+    });
+
+    document.getElementById("status").textContent = "Discord 연결 성공";
+
+  }catch(error){
+    document.getElementById("loginStatus").textContent =
+      "불러오기 실패: " + error.message;
+    document.getElementById("status").textContent =
+      "불러오기 실패: " + error.message;
+  }
+}
+
+servers.addEventListener("change", () => {
+  const option = servers.options[servers.selectedIndex];
+  document.getElementById("serverInfo").textContent =
+    servers.value ? "선택한 서버: " + option.text : "";
+});
+
+document.getElementById("logout").addEventListener("click", async () => {
+  await fetch("/auth/logout", {method:"POST"});
+  location.href = "/";
+});
+
+loadPanel();
+</script>
+</body>
+</html>
