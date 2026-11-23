@@ -7,24 +7,25 @@ import { fileURLToPath } from "node:url";
 
 const app = express();
 
-app.set("trust proxy", 1);
-app.use(express.json());
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PANEL_PATH = path.resolve(__dirname, "../panel.html");
-const BASE_URL = "https://sky-admin-bot-web-production.up.railway.app";
+const BASE_URL =
+  "https://sky-admin-bot-web-production.up.railway.app";
 
 const REDIRECT_URI = `${BASE_URL}/auth/discord/callback`;
 
+app.set("trust proxy", 1);
+app.use(express.json());
+
 app.use(session({
+  name: "sky.sid",
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true,
     httpOnly: true,
+    secure: true,
     sameSite: "lax",
     maxAge: 24 * 60 * 60 * 1000
   }
@@ -35,7 +36,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/panel.html", (req, res) => {
-  res.sendFile(PANEL_PATH);
+  res.sendFile(path.join(__dirname, "panel.html"));
 });
 
 app.get("/health", (req, res) => {
@@ -46,21 +47,32 @@ app.get("/auth/discord", (req, res) => {
   const state = crypto.randomUUID();
   req.session.oauthState = state;
 
-  const params = new URLSearchParams({
-    client_id: process.env.DISCORD_CLIENT_ID,
-    redirect_uri: REDIRECT_URI,
-    response_type: "code",
-    scope: "identify guilds",
-    state
-  });
+  req.session.save((error) => {
+    if (error) {
+      return res.status(500).send("세션 저장 실패");
+    }
 
-  res.redirect(`https://discord.com/oauth2/authorize?${params}`);
+    const params = new URLSearchParams({
+      client_id: process.env.DISCORD_CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      response_type: "code",
+      scope: "identify guilds",
+      state
+    });
+
+    res.redirect(
+      `https://discord.com/oauth2/authorize?${params}`
+    );
+  });
 });
 
 app.get("/auth/discord/callback", async (req, res) => {
   try {
-    if (!req.query.code || req.query.state !== req.session.oauthState) {
-      return res.status(400).send("OAuth 인증 상태가 올바르지 않습니다.");
+    if (
+      !req.query.code ||
+      req.query.state !== req.session.oauthState
+    ) {
+      return res.status(400).send("로그인 인증 오류");
     }
 
     delete req.session.oauthState;
@@ -85,25 +97,20 @@ app.get("/auth/discord/callback", async (req, res) => {
     const token = await tokenResponse.json();
 
     if (!tokenResponse.ok) {
-      return res.status(400).send("Discord 토큰 발급에 실패했습니다.");
+      return res.status(400).send("Discord 토큰 발급 실패");
     }
 
     const headers = {
       Authorization: `Bearer ${token.access_token}`
     };
 
-    const userResponse = await fetch(
-      "https://discord.com/api/users/@me",
-      { headers }
-    );
-
-    const guildResponse = await fetch(
-      "https://discord.com/api/users/@me/guilds",
-      { headers }
-    );
+    const [userResponse, guildResponse] = await Promise.all([
+      fetch("https://discord.com/api/users/@me", { headers }),
+      fetch("https://discord.com/api/users/@me/guilds", { headers })
+    ]);
 
     if (!userResponse.ok || !guildResponse.ok) {
-      return res.status(400).send("Discord 계정 정보를 가져오지 못했습니다.");
+      return res.status(400).send("Discord 정보 불러오기 실패");
     }
 
     req.session.user = await userResponse.json();
@@ -111,8 +118,7 @@ app.get("/auth/discord/callback", async (req, res) => {
 
     req.session.save((error) => {
       if (error) {
-        console.error(error);
-        return res.status(500).send("로그인 세션 저장에 실패했습니다.");
+        return res.status(500).send("로그인 세션 저장 실패");
       }
 
       res.redirect("/panel.html");
@@ -120,7 +126,7 @@ app.get("/auth/discord/callback", async (req, res) => {
 
   } catch (error) {
     console.error(error);
-    res.status(500).send("로그인 처리 중 오류가 발생했습니다.");
+    res.status(500).send("로그인 처리 오류");
   }
 });
 
@@ -138,7 +144,12 @@ app.get("/api/me", (req, res) => {
 });
 
 app.post("/auth/logout", (req, res) => {
-  req.session.destroy(() => {
+  req.session.destroy((error) => {
+    if (error) {
+      return res.status(500).json({ success: false });
+    }
+
+    res.clearCookie("sky.sid");
     res.json({ success: true });
   });
 });
@@ -146,5 +157,5 @@ app.post("/auth/logout", (req, res) => {
 const port = process.env.PORT || 3000;
 
 app.listen(port, "0.0.0.0", () => {
-  console.log(`Sky Admin Backend running on port ${port}`);
+  console.log(`Sky Admin Bot running on ${port}`);
 });
