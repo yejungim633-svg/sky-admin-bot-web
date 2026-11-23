@@ -6,13 +6,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const app = express();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const BASE_URL = "https://sky-admin-bot-web-production.up.railway.app";
 const REDIRECT_URI = `${BASE_URL}/auth/discord/callback`;
-const PANEL_PATH = path.resolve(__dirname, "../panel.html");
 
 app.set("trust proxy", 1);
 app.use(express.json());
@@ -26,20 +23,14 @@ app.use(session({
     httpOnly: true,
     secure: true,
     sameSite: "lax",
-    maxAge: 24 * 60 * 60 * 1000
+    maxAge: 86400000
   }
 }));
 
-app.get("/", (req, res) => {
-  res.redirect("/panel.html");
-});
+app.get("/", (req, res) => res.redirect("/panel.html"));
 
 app.get("/panel.html", (req, res) => {
-  res.sendFile(PANEL_PATH, (error) => {
-    if (error && !res.headersSent) {
-      res.status(404).send("관리 패널 파일을 찾을 수 없습니다.");
-    }
-  });
+  res.sendFile(path.join(__dirname, "panel.html"));
 });
 
 app.get("/health", (req, res) => {
@@ -50,10 +41,8 @@ app.get("/auth/discord", (req, res) => {
   const state = crypto.randomUUID();
   req.session.oauthState = state;
 
-  req.session.save((error) => {
-    if (error) {
-      return res.status(500).send("세션 저장 실패");
-    }
+  req.session.save(error => {
+    if (error) return res.status(500).send("세션 저장 실패");
 
     const params = new URLSearchParams({
       client_id: process.env.DISCORD_CLIENT_ID,
@@ -69,10 +58,7 @@ app.get("/auth/discord", (req, res) => {
 
 app.get("/auth/discord/callback", async (req, res) => {
   try {
-    if (
-      !req.query.code ||
-      req.query.state !== req.session.oauthState
-    ) {
+    if (!req.query.code || req.query.state !== req.session.oauthState) {
       return res.status(400).send("로그인 인증 오류");
     }
 
@@ -117,11 +103,8 @@ app.get("/auth/discord/callback", async (req, res) => {
     req.session.user = await userResponse.json();
     req.session.guilds = await guildResponse.json();
 
-    req.session.save((error) => {
-      if (error) {
-        return res.status(500).send("세션 저장 실패");
-      }
-
+    req.session.save(error => {
+      if (error) return res.status(500).send("세션 저장 실패");
       res.redirect("/panel.html");
     });
 
@@ -133,9 +116,7 @@ app.get("/auth/discord/callback", async (req, res) => {
 
 app.get("/api/me", (req, res) => {
   if (!req.session.user) {
-    return res.status(401).json({
-      error: "로그인이 필요합니다."
-    });
+    return res.status(401).json({ error: "로그인이 필요합니다." });
   }
 
   res.json({
@@ -145,11 +126,8 @@ app.get("/api/me", (req, res) => {
 });
 
 app.post("/auth/logout", (req, res) => {
-  req.session.destroy((error) => {
-    if (error) {
-      return res.status(500).json({ success: false });
-    }
-
+  req.session.destroy(error => {
+    if (error) return res.status(500).json({ success: false });
     res.clearCookie("sky.sid");
     res.json({ success: true });
   });
