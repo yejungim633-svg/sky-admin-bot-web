@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -7,18 +6,60 @@
 <title>Sky Admin Bot | 관리 패널</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#0b1120;color:#f1f5f9;font-family:Arial,sans-serif}
-header{height:75px;padding:0 25px;background:#111c30;border-bottom:1px solid #26344b;display:flex;align-items:center;justify-content:space-between}
+body{
+  margin:0;
+  background:#0b1120;
+  color:#f1f5f9;
+  font-family:Arial,sans-serif
+}
+header{
+  height:75px;
+  padding:0 25px;
+  background:#111c30;
+  border-bottom:1px solid #26344b;
+  display:flex;
+  align-items:center;
+  justify-content:space-between
+}
 .logo{font-size:21px;font-weight:bold}
 main{max-width:1000px;margin:40px auto;padding:20px}
-.card{background:#142137;border:1px solid #293b55;border-radius:13px;padding:25px;margin-bottom:20px}
-button,select{padding:13px 17px;border-radius:8px;font-size:14px}
-button{border:0;background:#5865f2;color:white;cursor:pointer}
-select{width:100%;background:#0b1120;color:white;border:1px solid #40516b;margin-top:12px}
-p{color:#a8b6ca}
+.card{
+  background:#142137;
+  border:1px solid #293b55;
+  border-radius:13px;
+  padding:25px;
+  margin-bottom:20px
+}
+button,select{
+  padding:13px 17px;
+  border-radius:8px;
+  font-size:14px
+}
+button{
+  border:0;
+  background:#5865f2;
+  color:white;
+  cursor:pointer
+}
+button:disabled{opacity:.5;cursor:not-allowed}
+select{
+  width:100%;
+  background:#0b1120;
+  color:white;
+  border:1px solid #40516b;
+  margin-top:12px
+}
+p{color:#a8b6ca;line-height:1.6}
 .hidden{display:none}
+.server-name{font-size:24px;font-weight:bold}
+.back{
+  background:#334155;
+  margin-bottom:20px
+}
+.status{margin-top:15px}
 </style>
 </head>
+
 <body>
 <header>
   <div class="logo">Sky Admin Bot</div>
@@ -26,56 +67,103 @@ p{color:#a8b6ca}
 </header>
 
 <main>
+
   <section class="card" id="loginBox">
     <h2>관리 패널 로그인</h2>
     <p>Discord 계정으로 로그인하세요.</p>
-    <button onclick="location.href='/auth/discord'">Discord 로그인</button>
+    <button onclick="location.href='/auth/discord'">
+      Discord 로그인
+    </button>
     <p id="loginStatus">로그인이 필요합니다.</p>
   </section>
 
   <section class="card hidden" id="dashboard">
     <h2>관리자 대시보드</h2>
     <p id="userInfo"></p>
-    <p id="serverCount"></p>
-    <h3>Discord 서버 선택</h3>
+
+    <h3>관리할 서버 선택</h3>
+    <p>본인에게 관리자 권한이 있는 서버만 표시됩니다.</p>
+
     <select id="servers">
       <option value="">서버 불러오는 중...</option>
     </select>
-    <p id="serverInfo"></p>
-    <p id="status"></p>
+
+    <p id="serverCount"></p>
+    <p id="status" class="status"></p>
   </section>
+
+  <section class="card hidden" id="serverPage">
+    <button class="back" id="backButton">← 서버 선택으로</button>
+
+    <p>현재 관리 중인 서버</p>
+    <div class="server-name" id="selectedServerName"></div>
+
+    <p id="selectedServerId"></p>
+
+    <hr style="border-color:#293b55;margin:25px 0">
+
+    <h3>서버 관리</h3>
+    <p>
+      서버 선택 및 관리자 권한 확인이 완료되었습니다.
+    </p>
+    <p>
+      역할 관리, 보안 설정, 로그 및 서버 설정 기능은
+      다음 단계에서 이 화면에 연결할 수 있습니다.
+    </p>
+  </section>
+
 </main>
 
 <script>
 const loginBox = document.getElementById("loginBox");
 const dashboard = document.getElementById("dashboard");
+const serverPage = document.getElementById("serverPage");
 const servers = document.getElementById("servers");
+const statusText = document.getElementById("status");
+
+function showDashboard(){
+  dashboard.classList.remove("hidden");
+  serverPage.classList.add("hidden");
+}
+
+function showServerPage(guild){
+  dashboard.classList.add("hidden");
+  serverPage.classList.remove("hidden");
+
+  document.getElementById("selectedServerName").textContent =
+    guild.name;
+
+  document.getElementById("selectedServerId").textContent =
+    "서버 ID: " + guild.id;
+}
 
 async function loadPanel(){
   try{
-    const response = await fetch("/api/me");
+    const response = await fetch("/api/me", {
+      credentials:"same-origin"
+    });
 
     if(response.status === 401){
       loginBox.classList.remove("hidden");
       dashboard.classList.add("hidden");
+      serverPage.classList.add("hidden");
       return;
     }
 
-    if(!response.ok) throw new Error("서버 응답 오류");
+    if(!response.ok){
+      throw new Error("서버 정보를 불러오지 못했습니다.");
+    }
 
     const data = await response.json();
 
     loginBox.classList.add("hidden");
-    dashboard.classList.remove("hidden");
     document.getElementById("logout").classList.remove("hidden");
 
     document.getElementById("userInfo").textContent =
-      "로그인 계정: " + (data.user.global_name || data.user.username);
+      "로그인 계정: " +
+      (data.user.global_name || data.user.username);
 
     const guilds = data.guilds || [];
-
-    document.getElementById("serverCount").textContent =
-      "참여 중인 서버: " + guilds.length + "개";
 
     servers.innerHTML = "";
     servers.add(new Option("관리할 서버를 선택하세요.", ""));
@@ -84,24 +172,85 @@ async function loadPanel(){
       servers.add(new Option(guild.name, guild.id));
     });
 
-    document.getElementById("status").textContent = "Discord 연결 성공";
+    document.getElementById("serverCount").textContent =
+      "관리자 권한 서버: " + guilds.length + "개";
+
+    if(data.selectedGuild){
+      showServerPage(data.selectedGuild);
+    }else{
+      showDashboard();
+    }
+
+    if(guilds.length === 0){
+      statusText.textContent =
+        "관리자 권한이 있는 서버가 없습니다.";
+    }else{
+      statusText.textContent =
+        "관리할 서버를 선택해 주세요.";
+    }
 
   }catch(error){
-    document.getElementById("loginStatus").textContent =
-      "불러오기 실패: " + error.message;
-    document.getElementById("status").textContent =
-      "불러오기 실패: " + error.message;
+    statusText.textContent = error.message;
   }
 }
 
-servers.addEventListener("change", () => {
-  const option = servers.options[servers.selectedIndex];
-  document.getElementById("serverInfo").textContent =
-    servers.value ? "선택한 서버: " + option.text : "";
+// 서버를 선택하면 자동으로 다음 화면으로 이동
+servers.addEventListener("change", async () => {
+  const guildId = servers.value;
+
+  if(!guildId) return;
+
+  servers.disabled = true;
+  statusText.textContent = "서버 권한 확인 중...";
+
+  try{
+    const response = await fetch("/api/select-server", {
+      method:"POST",
+      credentials:"same-origin",
+      headers:{
+        "Content-Type":"application/json"
+      },
+      body:JSON.stringify({guildId})
+    });
+
+    const result = await response.json();
+
+    if(!response.ok){
+      throw new Error(result.error || "서버 선택 실패");
+    }
+
+    showServerPage(result.guild);
+
+  }catch(error){
+    statusText.textContent = error.message;
+    await loadPanel();
+  }finally{
+    servers.disabled = false;
+  }
 });
 
+// 서버 선택 화면으로 돌아가기
+document.getElementById("backButton").addEventListener("click", async () => {
+  try{
+    await fetch("/api/deselect-server", {
+      method:"POST",
+      credentials:"same-origin"
+    });
+
+    showDashboard();
+    servers.value = "";
+  }catch(error){
+    alert("서버 선택 화면으로 돌아가지 못했습니다.");
+  }
+});
+
+// 로그아웃
 document.getElementById("logout").addEventListener("click", async () => {
-  await fetch("/auth/logout", {method:"POST"});
+  await fetch("/auth/logout", {
+    method:"POST",
+    credentials:"same-origin"
+  });
+
   location.href = "/";
 });
 
