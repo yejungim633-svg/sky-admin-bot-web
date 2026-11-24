@@ -11,7 +11,7 @@ const BASE_URL = "https://sky-admin-bot-web-production.up.railway.app";
 const REDIRECT_URI = `${BASE_URL}/auth/discord/callback`;
 
 app.set("trust proxy", 1);
-app.use(express.json());
+app.use(express.json({ limit: "64kb" }));
 
 const cookieOptions = {
   httpOnly: true,
@@ -32,7 +32,6 @@ function getCookie(req, name) {
   for (const item of (req.headers.cookie || "").split(";")) {
     const index = item.indexOf("=");
     if (index === -1) continue;
-
     if (item.slice(0, index).trim() === name) {
       try {
         return decodeURIComponent(item.slice(index + 1).trim());
@@ -44,10 +43,8 @@ function getCookie(req, name) {
   return null;
 }
 
-// 관리자 권한 확인: ADMINISTRATOR 권한 값은 8
 function hasAdminPermission(guild) {
   if (guild.owner === true) return true;
-
   try {
     return (BigInt(guild.permissions || "0") & 8n) === 8n;
   } catch {
@@ -65,26 +62,17 @@ app.get("/panel.html", (req, res) => {
   res.sendFile(path.join(__dirname, "panel.html"));
 });
 
-app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
-});
+app.get("/health", (req, res) => res.json({ status: "ok" }));
 
-// 디스코드 로그인
 app.get("/auth/discord", (req, res) => {
-  if (
-    !process.env.DISCORD_CLIENT_ID ||
-    !process.env.DISCORD_CLIENT_SECRET ||
-    !process.env.SESSION_SECRET
-  ) {
+  if (!process.env.DISCORD_CLIENT_ID ||
+      !process.env.DISCORD_CLIENT_SECRET ||
+      !process.env.SESSION_SECRET) {
     return res.status(500).send("Railway 환경변수를 확인해 주세요.");
   }
 
   const state = crypto.randomUUID();
-
-  res.cookie("sky.oauth_state", state, {
-    ...cookieOptions,
-    maxAge: 600000
-  });
+  res.cookie("sky.oauth_state", state, { ...cookieOptions, maxAge: 600000 });
 
   const params = new URLSearchParams({
     client_id: process.env.DISCORD_CLIENT_ID,
@@ -97,7 +85,6 @@ app.get("/auth/discord", (req, res) => {
   res.redirect(`https://discord.com/oauth2/authorize?${params}`);
 });
 
-// 디스코드 로그인 승인
 app.get("/auth/discord/callback", async (req, res) => {
   try {
     if (req.query.error) {
@@ -121,22 +108,17 @@ app.get("/auth/discord/callback", async (req, res) => {
 
     res.clearCookie("sky.oauth_state", cookieOptions);
 
-    const tokenResponse = await fetch(
-      "https://discord.com/api/oauth2/token",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: new URLSearchParams({
-          client_id: process.env.DISCORD_CLIENT_ID,
-          client_secret: process.env.DISCORD_CLIENT_SECRET,
-          grant_type: "authorization_code",
-          code,
-          redirect_uri: REDIRECT_URI
-        })
-      }
-    );
+    const tokenResponse = await fetch("https://discord.com/api/oauth2/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: process.env.DISCORD_CLIENT_ID,
+        client_secret: process.env.DISCORD_CLIENT_SECRET,
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: REDIRECT_URI
+      })
+    });
 
     const token = await tokenResponse.json();
 
@@ -180,23 +162,20 @@ app.get("/auth/discord/callback", async (req, res) => {
         res.redirect("/panel.html");
       });
     });
-
   } catch (error) {
     console.error("OAuth callback error:", error);
     res.status(500).send("로그인 처리 오류");
   }
 });
 
-// 로그인 정보와 관리자 권한 서버만 전달
 app.get("/api/me", (req, res) => {
   if (!req.session.user) {
     return res.status(401).json({ error: "로그인이 필요합니다." });
   }
 
   const adminGuilds = getAdminGuilds(req);
-  const selectedGuild = adminGuilds.find(
-    guild => guild.id === req.session.selectedGuildId
-  ) || null;
+  const selectedGuild =
+    adminGuilds.find(guild => guild.id === req.session.selectedGuildId) || null;
 
   res.json({
     user: req.session.user,
@@ -205,7 +184,6 @@ app.get("/api/me", (req, res) => {
   });
 });
 
-// 선택한 서버가 실제 관리자 권한 서버인지 재검증
 app.post("/api/select-server", (req, res) => {
   if (!req.session.user) {
     return res.status(401).json({ error: "로그인이 필요합니다." });
@@ -244,7 +222,6 @@ app.post("/api/select-server", (req, res) => {
   });
 });
 
-// 선택한 서버 선택 해제
 app.post("/api/deselect-server", (req, res) => {
   if (!req.session.user) {
     return res.status(401).json({ error: "로그인이 필요합니다." });
@@ -261,7 +238,114 @@ app.post("/api/deselect-server", (req, res) => {
   });
 });
 
-// 로그아웃
+async function proxyBotApi(req, res, endpoint) {
+  if (!req.session.user) {
+    return res.status(401).json({
+      error: "Discord 로그인이 필요합니다."
+    });
+  }
+
+  const guildId = req.session.selectedGuildId;
+
+  if (!guildId) {
+    return res.status(400).json({
+      error: "먼저 관리할 서버를 선택하세요."
+    });
+  }
+
+  const allowedGuild =
+    getAdminGuilds(req).find(guild => guild.id === guildId);
+
+  if (!allowedGuild) {
+    return res.status(403).json({
+      error: "선택한 서버의 관리자 권한을 확인할 수 없습니다."
+    });
+  }
+
+  const apiBase = (process.env.BOT_API_URL || "").replace(/\/+$/, "");
+  const apiKey = process.env.BOT_API_KEY || "";
+
+  if (!apiBase || !apiKey) {
+    return res.status(503).json({
+      error: "봇 API 연결 설정이 필요합니다. Railway의 BOT_API_URL과 BOT_API_KEY를 확인하세요."
+    });
+  }
+
+  try {
+    const query =
+      req.method === "GET" && req.originalUrl.includes("?")
+        ? req.originalUrl.slice(req.originalUrl.indexOf("?"))
+        : "";
+
+    const upstream = await fetch(
+      `${apiBase}/panel/${endpoint}${query}`,
+      {
+        method: req.method,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Sky-Panel-Key": apiKey,
+          "X-Discord-User-ID": String(req.session.user.id),
+          "X-Guild-ID": String(guildId)
+        },
+        ...(req.method === "POST"
+          ? { body: JSON.stringify(req.body || {}) }
+          : {})
+      }
+    );
+
+    const raw = await upstream.text();
+
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      data = {
+        error: raw || "봇 API 응답을 해석할 수 없습니다."
+      };
+    }
+
+    return res.status(upstream.status).json(data);
+  } catch (error) {
+    console.error("Bot API proxy error:", error);
+
+    return res.status(502).json({
+      error: "하늘봇 서비스에 연결하지 못했습니다. 봇 서비스 상태와 BOT_API_URL을 확인하세요."
+    });
+  }
+}
+
+app.get("/api/panel/overview", (req, res) =>
+  proxyBotApi(req, res, "overview")
+);
+
+app.get("/api/panel/logs", (req, res) =>
+  proxyBotApi(req, res, "logs")
+);
+
+app.get("/api/panel/roles", (req, res) =>
+  proxyBotApi(req, res, "roles")
+);
+
+app.get("/api/panel/tickets", (req, res) =>
+  proxyBotApi(req, res, "tickets")
+);
+
+app.get("/api/panel/security", (req, res) =>
+  proxyBotApi(req, res, "security")
+);
+
+app.post("/api/panel/security", (req, res) =>
+  proxyBotApi(req, res, "security")
+);
+
+app.get("/api/panel/settings", (req, res) =>
+  proxyBotApi(req, res, "settings")
+);
+
+app.post("/api/panel/settings", (req, res) =>
+  proxyBotApi(req, res, "settings")
+);
+
 app.post("/auth/logout", (req, res) => {
   req.session.destroy(error => {
     if (error) {
