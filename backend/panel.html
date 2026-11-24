@@ -1,260 +1,69 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sky Admin Bot | 관리 패널</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>하늘봇 | 공식 홈페이지 & 관리 패널</title>
 <style>
-*{box-sizing:border-box}
-body{
-  margin:0;
-  background:#0b1120;
-  color:#f1f5f9;
-  font-family:Arial,sans-serif
-}
-header{
-  height:75px;
-  padding:0 25px;
-  background:#111c30;
-  border-bottom:1px solid #26344b;
-  display:flex;
-  align-items:center;
-  justify-content:space-between
-}
-.logo{font-size:21px;font-weight:bold}
-main{max-width:1000px;margin:40px auto;padding:20px}
-.card{
-  background:#142137;
-  border:1px solid #293b55;
-  border-radius:13px;
-  padding:25px;
-  margin-bottom:20px
-}
-button,select{
-  padding:13px 17px;
-  border-radius:8px;
-  font-size:14px
-}
-button{
-  border:0;
-  background:#5865f2;
-  color:white;
-  cursor:pointer
-}
-button:disabled{opacity:.5;cursor:not-allowed}
-select{
-  width:100%;
-  background:#0b1120;
-  color:white;
-  border:1px solid #40516b;
-  margin-top:12px
-}
-p{color:#a8b6ca;line-height:1.6}
-.hidden{display:none}
-.server-name{font-size:24px;font-weight:bold}
-.back{
-  background:#334155;
-  margin-bottom:20px
-}
-.status{margin-top:15px}
+:root{--bg:#0b1020;--panel:#121a2d;--line:#26334d;--text:#eef3ff;--muted:#9eacc5;--blue:#6ea8ff;--cyan:#69d5e8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,"Malgun Gothic",sans-serif}
+a{color:inherit;text-decoration:none}.wrap{max-width:1120px;margin:auto;padding:0 24px}
+header{height:76px;border-bottom:1px solid var(--line);display:flex;align-items:center}
+nav{display:flex;align-items:center;justify-content:space-between;width:100%}.brand{font-size:21px;font-weight:800;letter-spacing:.3px}.brand span{color:var(--blue)}
+.navlinks{display:flex;gap:24px;color:var(--muted);font-size:14px}.btn{border:0;border-radius:10px;padding:12px 18px;background:var(--blue);color:#071326;font-weight:800;cursor:pointer}.btn.secondary{background:#202d46;color:var(--text);border:1px solid var(--line)}
+.hero{padding:92px 0 76px;display:grid;grid-template-columns:1.2fr .8fr;gap:40px;align-items:center}.eyebrow{color:var(--cyan);font-size:13px;font-weight:800;letter-spacing:2px}.hero h1{font-size:52px;line-height:1.14;margin:18px 0}.hero p{font-size:17px;line-height:1.8;color:var(--muted);max-width:650px}.actions{display:flex;gap:12px;margin-top:28px;flex-wrap:wrap}
+.preview{background:linear-gradient(145deg,#172744,#10182a);border:1px solid var(--line);border-radius:22px;padding:26px;min-height:270px}.preview .top{display:flex;justify-content:space-between;color:var(--muted);font-size:13px}.status{color:#8de2bd}.metric{font-size:30px;font-weight:800;margin:24px 0 5px}.muted{color:var(--muted)}
+section{padding:44px 0}.section-title{font-size:27px;margin:0 0 22px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px}.card h3{margin:0 0 10px}.card p{margin:0;color:var(--muted);line-height:1.7;font-size:14px}
+#dashboard{display:none;padding:34px 0 70px}.dashhead{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:24px}.dashgrid{display:grid;grid-template-columns:280px 1fr;gap:18px}.servers,.mainpanel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px}.server-list{display:grid;gap:9px;margin-top:14px}.server-option{padding:13px;border:1px solid var(--line);border-radius:10px;background:#0e1728;color:var(--text);text-align:left;cursor:pointer}.server-option:hover{border-color:var(--blue)}.server-option small{display:block;color:var(--muted);margin-top:4px}.empty{padding:26px;border:1px dashed var(--line);border-radius:12px;color:var(--muted);line-height:1.7}
+footer{border-top:1px solid var(--line);padding:28px 0;color:var(--muted);font-size:13px}
+@media(max-width:760px){.hero{grid-template-columns:1fr;padding:60px 0}.hero h1{font-size:39px}.cards{grid-template-columns:1fr}.dashgrid{grid-template-columns:1fr}.navlinks{display:none}}
 </style>
 </head>
-
 <body>
-<header>
-  <div class="logo">Sky Admin Bot</div>
-  <button id="logout" class="hidden">로그아웃</button>
-</header>
-
-<main>
-
-  <section class="card" id="loginBox">
-    <h2>관리 패널 로그인</h2>
-    <p>Discord 계정으로 로그인하세요.</p>
-    <button onclick="location.href='/auth/discord'">
-      Discord 로그인
-    </button>
-    <p id="loginStatus">로그인이 필요합니다.</p>
-  </section>
-
-  <section class="card hidden" id="dashboard">
-    <h2>관리자 대시보드</h2>
-    <p id="userInfo"></p>
-
-    <h3>관리할 서버 선택</h3>
-    <p>본인에게 관리자 권한이 있는 서버만 표시됩니다.</p>
-
-    <select id="servers">
-      <option value="">서버 불러오는 중...</option>
-    </select>
-
-    <p id="serverCount"></p>
-    <p id="status" class="status"></p>
-  </section>
-
-  <section class="card hidden" id="serverPage">
-    <button class="back" id="backButton">← 서버 선택으로</button>
-
-    <p>현재 관리 중인 서버</p>
-    <div class="server-name" id="selectedServerName"></div>
-
-    <p id="selectedServerId"></p>
-
-    <hr style="border-color:#293b55;margin:25px 0">
-
-    <h3>서버 관리</h3>
-    <p>
-      서버 선택 및 관리자 권한 확인이 완료되었습니다.
-    </p>
-    <p>
-      역할 관리, 보안 설정, 로그 및 서버 설정 기능은
-      다음 단계에서 이 화면에 연결할 수 있습니다.
-    </p>
-  </section>
-
-</main>
-
+<header><div class="wrap"><nav><a class="brand" href="#home">SKY<span>BOT</span></a><div class="navlinks"><a href="#features">주요 기능</a><a href="#about">소개</a><a href="#dashboard" id="panelNav" style="display:none">관리 패널</a></div><button class="btn" id="loginTop">Discord 로그인</button></nav></div></header>
+<main id="home">
+<div class="wrap">
+<div class="hero">
+<div><div class="eyebrow">SKYBOT OFFICIAL</div><h1>서버 관리를<br>더 간편하게.</h1><p>하늘봇 공식 홈페이지입니다. 서버 관리 기능과 운영 도구를 한곳에서 확인하고, Discord 계정으로 로그인해 관리 패널을 이용할 수 있습니다.</p><div class="actions"><button class="btn" id="loginHero">관리 패널 시작하기</button><a class="btn secondary" href="#features">기능 살펴보기</a></div></div>
+<div class="preview"><div class="top"><b>SKYBOT CONTROL</b><span class="status" id="botStatus">● 웹 패널 연결 확인 중</span></div><div class="metric">한곳에서 관리</div><div class="muted">서버 선택 · 설정 확인 · 운영 관리</div><div style="height:1px;background:var(--line);margin:24px 0"></div><div class="muted">공식 홈페이지와 관리 패널을 하나의 화면으로 통합했습니다.</div></div>
+</div>
+<section id="features"><h2 class="section-title">주요 기능</h2><div class="cards">
+<div class="card"><h3>서버 관리</h3><p>관리 권한이 있는 Discord 서버를 확인하고 관리할 서버를 선택합니다.</p></div>
+<div class="card"><h3>운영 도구</h3><p>하늘봇의 인증, 보안, 도배 감지, 로그 및 티켓 기능을 관리 패널에서 연결할 수 있도록 구성합니다.</p></div>
+<div class="card"><h3>안전한 로그인</h3><p>Discord OAuth 로그인을 사용하며, 서버 관리 권한이 확인된 서버만 목록에 표시합니다.</p></div>
+</div></section>
+<section id="about"><h2 class="section-title">하늘봇 공식 안내</h2><div class="card"><p>하늘봇의 업데이트 및 기능 안내를 제공하는 공식 페이지입니다. 기존 봇 명령어와 데이터베이스는 별도로 유지하며, 웹 패널은 인증된 계정으로 연결됩니다.</p></div></section>
+</div></main>
+<div class="wrap" id="dashboard">
+<div class="dashhead"><div><div class="eyebrow">SKYBOT MANAGEMENT</div><h1 style="margin:8px 0 4px">관리 패널</h1><div class="muted" id="welcome"></div></div><button class="btn secondary" id="logout">로그아웃</button></div>
+<div class="dashgrid"><aside class="servers"><h3 style="margin:0">관리 가능한 서버</h3><p class="muted" style="font-size:13px;line-height:1.6">Discord 계정에 서버 관리 권한이 있는 서버만 표시됩니다.</p><div class="server-list" id="serverList"><div class="empty">서버 목록을 불러오는 중입니다.</div></div></aside>
+<div class="mainpanel"><div id="serverDetails"><h2 style="margin-top:0">서버를 선택해 주세요</h2><div class="empty">왼쪽 목록에서 관리할 서버를 선택하면 해당 서버의 관리 화면으로 이동합니다.</div></div></div></div>
+</div>
+<footer><div class="wrap">© SkyBot · 공식 홈페이지 및 관리 패널</div></footer>
 <script>
-const loginBox = document.getElementById("loginBox");
-const dashboard = document.getElementById("dashboard");
-const serverPage = document.getElementById("serverPage");
-const servers = document.getElementById("servers");
-const statusText = document.getElementById("status");
-
-function showDashboard(){
-  dashboard.classList.remove("hidden");
-  serverPage.classList.add("hidden");
+const $=id=>document.getElementById(id);
+async function api(url,options={}){const r=await fetch(url,{credentials:"include",headers:{"Content-Type":"application/json",...(options.headers||{})},...options});let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.error||"요청을 처리하지 못했습니다.");return d}
+function login(){location.href="/auth/discord"}
+async function load(){
+ try{
+  const data=await api("/api/me");
+  if(!data||!data.user){$("botStatus").textContent="● 로그인 대기";return}
+  $("home").style.display="none";$("dashboard").style.display="block";$("panelNav").style.display="inline";
+  $("welcome").textContent=(data.user.global_name||data.user.username||"사용자")+"님으로 로그인했습니다.";
+  const list=$("serverList");list.innerHTML="";
+  const guilds=data.guilds||[];
+  if(!guilds.length){list.innerHTML='<div class="empty">관리 권한이 확인된 서버가 없습니다.<br>Discord에서 서버 권한을 확인한 뒤 다시 로그인해 주세요.</div>';return}
+  guilds.forEach(g=>{const b=document.createElement("button");b.className="server-option";b.innerHTML=`<strong>${escapeHtml(g.name)}</strong><small>서버 ID: ${escapeHtml(g.id)}</small>`;b.onclick=()=>selectServer(g);list.appendChild(b)});
+  if(data.selectedGuild){selectServer(data.selectedGuild)}
+ }catch(e){$("botStatus").textContent="● 로그인 전"}
 }
-
-function showServerPage(guild){
-  dashboard.classList.add("hidden");
-  serverPage.classList.remove("hidden");
-
-  document.getElementById("selectedServerName").textContent =
-    guild.name;
-
-  document.getElementById("selectedServerId").textContent =
-    "서버 ID: " + guild.id;
+function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+async function selectServer(g){
+ try{await api("/api/select-server",{method:"POST",body:JSON.stringify({guildId:g.id})});
+ $("serverDetails").innerHTML=`<h2 style="margin-top:0">${escapeHtml(g.name)}</h2><div class="empty"><b>서버가 선택되었습니다.</b><br>서버 ID: ${escapeHtml(g.id)}<br><br>다음 연결 단계에서 기존 하늘봇 데이터베이스와 연동해 역할·인증·보안·로그·티켓 설정을 표시합니다. 아직 연결되지 않은 기능은 임의로 저장하거나 변경하지 않습니다.</div>`;
+ }catch(e){alert(e.message)}
 }
-
-async function loadPanel(){
-  try{
-    const response = await fetch("/api/me", {
-      credentials:"same-origin"
-    });
-
-    if(response.status === 401){
-      loginBox.classList.remove("hidden");
-      dashboard.classList.add("hidden");
-      serverPage.classList.add("hidden");
-      return;
-    }
-
-    if(!response.ok){
-      throw new Error("서버 정보를 불러오지 못했습니다.");
-    }
-
-    const data = await response.json();
-
-    loginBox.classList.add("hidden");
-    document.getElementById("logout").classList.remove("hidden");
-
-    document.getElementById("userInfo").textContent =
-      "로그인 계정: " +
-      (data.user.global_name || data.user.username);
-
-    const guilds = data.guilds || [];
-
-    servers.innerHTML = "";
-    servers.add(new Option("관리할 서버를 선택하세요.", ""));
-
-    guilds.forEach(guild => {
-      servers.add(new Option(guild.name, guild.id));
-    });
-
-    document.getElementById("serverCount").textContent =
-      "관리자 권한 서버: " + guilds.length + "개";
-
-    if(data.selectedGuild){
-      showServerPage(data.selectedGuild);
-    }else{
-      showDashboard();
-    }
-
-    if(guilds.length === 0){
-      statusText.textContent =
-        "관리자 권한이 있는 서버가 없습니다.";
-    }else{
-      statusText.textContent =
-        "관리할 서버를 선택해 주세요.";
-    }
-
-  }catch(error){
-    statusText.textContent = error.message;
-  }
-}
-
-// 서버를 선택하면 자동으로 다음 화면으로 이동
-servers.addEventListener("change", async () => {
-  const guildId = servers.value;
-
-  if(!guildId) return;
-
-  servers.disabled = true;
-  statusText.textContent = "서버 권한 확인 중...";
-
-  try{
-    const response = await fetch("/api/select-server", {
-      method:"POST",
-      credentials:"same-origin",
-      headers:{
-        "Content-Type":"application/json"
-      },
-      body:JSON.stringify({guildId})
-    });
-
-    const result = await response.json();
-
-    if(!response.ok){
-      throw new Error(result.error || "서버 선택 실패");
-    }
-
-    showServerPage(result.guild);
-
-  }catch(error){
-    statusText.textContent = error.message;
-    await loadPanel();
-  }finally{
-    servers.disabled = false;
-  }
-});
-
-// 서버 선택 화면으로 돌아가기
-document.getElementById("backButton").addEventListener("click", async () => {
-  try{
-    await fetch("/api/deselect-server", {
-      method:"POST",
-      credentials:"same-origin"
-    });
-
-    showDashboard();
-    servers.value = "";
-  }catch(error){
-    alert("서버 선택 화면으로 돌아가지 못했습니다.");
-  }
-});
-
-// 로그아웃
-document.getElementById("logout").addEventListener("click", async () => {
-  await fetch("/auth/logout", {
-    method:"POST",
-    credentials:"same-origin"
-  });
-
-  location.href = "/";
-});
-
-loadPanel();
+$("loginTop").onclick=login;$("loginHero").onclick=login;$("logout").onclick=async()=>{try{await api("/auth/logout",{method:"POST"})}finally{location.reload()}};
+load();
 </script>
-</body>
-</html>
+</body></html>
